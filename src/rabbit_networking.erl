@@ -162,6 +162,9 @@ fix_ssl_options(Config) ->
 
 tcp_listener_addresses(Port) when is_integer(Port) ->
     tcp_listener_addresses_auto(Port);
+tcp_listener_addresses({"local", Path}) ->
+    %% Unix domain socket variant
+    [{{local, Path}, 0, local}];
 tcp_listener_addresses({"auto", Port}) ->
     %% Variant to prevent lots of hacking around in bash and batch files
     tcp_listener_addresses_auto(Port);
@@ -219,7 +222,11 @@ start_listener(Listener, NumAcceptors, Protocol, Label, Opts) ->
 
 start_listener0(Address, NumAcceptors, Protocol, Label, Opts) ->
     Transport = transport(Protocol),
-    Spec = tcp_listener_spec(rabbit_tcp_listener_sup, Address, Opts,
+    Opts2 = case Address of
+        [{_,_,local}|_] -> [local|Opts];
+        _               -> Opts
+    end,
+    Spec = tcp_listener_spec(rabbit_tcp_listener_sup, Address, Opts2,
                              Transport, rabbit_connection_sup, [], Protocol,
                              NumAcceptors, Label),
     case supervisor:start_child(rabbit_sup, Spec) of

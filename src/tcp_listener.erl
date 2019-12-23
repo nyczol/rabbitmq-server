@@ -93,6 +93,10 @@ handle_info(_Info, State) ->
 terminate(_Reason, #state{on_shutdown = {M,F,A}, label=Label, ip=IPAddress, port=Port}) ->
     error_logger:info_msg("stopped ~s on ~s:~p~n",
                           [Label, rabbit_misc:ntoab(IPAddress), Port]),
+    case IPAddress of
+        {local, Path} -> catch file:delete(Path);
+        _             -> ok
+    end,
     apply(M, F, A ++ [IPAddress, Port]).
 
 code_change(_OldVsn, State, _Extra) ->
